@@ -1,5 +1,7 @@
 # AnySkin Handover Demo
 
+The tactile skin magnetometer should go to port 0 and the other one to port 7 on the chip.
+
 0. Start Hello Robot and home it:
 
 ```bash
