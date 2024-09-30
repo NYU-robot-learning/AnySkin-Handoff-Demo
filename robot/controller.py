@@ -52,10 +52,11 @@ def get_home_param(
         gripper_threshold_post_grasp_list,
     ]
 
-def get_input_tensor_sequence(sensor_queue, downsample, device):
+def get_input_tensor_sequence(sensor_queue, downsample, context_size, device):
     X = np.array(sensor_queue)
     X = np.diff(X[::downsample], axis=0)
     X = torch.as_tensor(X, dtype=torch.float32, device=torch.device(device))
+    X = X.unsqueeze(0)[:, -context_size:]
     return X
 
 class Controller:
@@ -67,7 +68,7 @@ class Controller:
         publisher = ZMQKeypointPublisher(
             network_cfg.get("host", ANYCAST), network_cfg["action_port"]
         )
-        subscriber = ReskinSensorSubscriber() # TODO: take this in the slip-deteciton-demo repo
+        subscriber = ReskinSensorSubscriber()
 
         self.flag_socket = create_request_socket(
             network_cfg.get("remote", LOCALHOST), port=network_cfg["flag_port"]
@@ -124,9 +125,10 @@ class Controller:
                     X = get_input_tensor_sequence(
                         self.sensor_queue,
                         self.cfg["downsample"],
+                        self.cfg["context_size"],
                         self.device,
                     )
-                    Yhat = self.model.step(X.unsqueeze(0))
+                    Yhat = self.model.step(X)
 
                     if Yhat:
                         logger.info("Slip")
