@@ -238,7 +238,7 @@ class Controller:
                         info="0.33 for door opening, 0.5 for drawer opening, 1 for everything else.",
                     )
                     gripper_tight = gr.Slider(
-                        -1.0,
+                        -5.0,
                         0.2,
                         value=-0.5,
                         step=0.01,

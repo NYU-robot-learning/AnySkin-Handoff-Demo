@@ -4,7 +4,7 @@ defaults:
   - _self_
 
 tactile_buffer_size: 150
-prediction_buffer_size: 10
+prediction_buffer_size: 1
 downsample: 15
 context_size: 7
 device: cpu
