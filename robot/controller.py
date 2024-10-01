@@ -85,6 +85,7 @@ class Controller:
         self.run_n = -1
         self.step_n = 0
         self.h = cfg["robot_params"]["h"]
+        self.stretch_gripper_tight = cfg["robot_params"]["stretch_gripper_tight"]
 
         self.abs_gripper = cfg["robot_params"]["abs_gripper"]
         self.gripper = 1.0
@@ -177,13 +178,13 @@ class Controller:
     def update_robot_params(
         self,
         height,
-        gripper,
+        gripper_tight,
+        gripper=1.0,
         # gripper_close_threshold,
         # gripper_open_threshold,
-        gripper_tight,
     ):
         logger.info(
-            f"Publishing params: height={height}, gripper={gripper}, gripper_tight={gripper_tight}"
+            f"Publishing params: height={height}, gripper_tight={gripper_tight}"
         )
 
         # Map starting position back to the height and base position, then publish that location to move
@@ -229,18 +230,10 @@ class Controller:
 
                 with gr.Column(scale=4):
                     height = gr.Slider(0, 1, value=0.7, step=0.01, label="Height")
-                    gripper = gr.Slider(
-                        0,
-                        1,
-                        value=self._max_gripper,
-                        step=0.01,
-                        label="Gripper max width",
-                        info="0.33 for door opening, 0.5 for drawer opening, 1 for everything else.",
-                    )
                     gripper_tight = gr.Slider(
-                        -5.0,
+                        -2.0,
                         0.2,
-                        value=-0.5,
+                        value=-1.6,
                         step=0.01,
                         label="Gripper tightness",
                         info="This is how tight the gripper becomes when it closes. The lower the value, the tighter the gripper.",
@@ -254,7 +247,6 @@ class Controller:
                             fn=self.update_robot_params,
                             inputs=[
                                 height,
-                                gripper,
                                 gripper_tight,
                             ],
                             outputs=None,

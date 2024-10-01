@@ -43,7 +43,7 @@ def init_model(cfg: OmegaConf):
     model = hydra.utils.instantiate(cfg.model)
     model = model.to(cfg.device)
 
-    model_weight_pth = cfg.get("model_weight_pth")
+    model_weight_pth = f"checkpoints/handover/{cfg.get('model_weight_pth')}.pt"
 
     if model_weight_pth is None:
         model_weight_pth = get_model_weight_pth(task_name=cfg.task)
