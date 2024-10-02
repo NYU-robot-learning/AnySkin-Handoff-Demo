@@ -52,11 +52,11 @@ def get_home_param(
         gripper_threshold_post_grasp_list,
     ]
 
-def get_input_tensor_sequence(sensor_queue, diff_rate, context_size, device):
+def get_input_tensor_sequence(sensor_queue, diff_rate, context_size, max_diff, device):
     X = np.array(sensor_queue)
     X = X[diff_rate:] - X[:-diff_rate]
     X = torch.as_tensor(X, dtype=torch.float32, device=torch.device(device))
-    X = X.unsqueeze(0)[:, -context_size:]
+    X = X.unsqueeze(0)[:, -context_size:] / max_diff
     return X
 
 class Controller:
@@ -127,6 +127,7 @@ class Controller:
                         self.sensor_queue,
                         self.cfg["diff_rate"],
                         self.cfg["context_size"],
+                        self.cfg["max_diff"],
                         self.device,
                     )
                     Yhat = self.model.step(X)
