@@ -1,6 +1,6 @@
 _target_: model.lstm_model.LSTMNet
 input_size: 15
-hidden_size: 128
+hidden_size: 512
 lstm_hidden_size: 128
 output_size: 1
 nlayers: 1

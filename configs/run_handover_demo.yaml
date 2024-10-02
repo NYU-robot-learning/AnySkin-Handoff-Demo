@@ -5,13 +5,13 @@ defaults:
 
 tactile_buffer_size: 150
 prediction_buffer_size: 1
-downsample: 15
-context_size: 7
+diff_rate: 15
+context_size: 100
 device: cpu
 task: handover
 
-model_weight_pth: "dense_checkpoint_full_context_len"
-slip_detection_freq: 33 # Hz
+model_weight_pth: "dense_checkpoint_high_freq"
+slip_detection_freq: 100 # Hz
 slip_detection_threshold: 0.5
 
 robot_params:
