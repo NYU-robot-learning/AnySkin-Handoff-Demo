@@ -112,6 +112,7 @@ class Controller:
 
     def _run(self):
         logger.info("Run robot handover")
+        # data = []
 
         policy_counter = self.slip_detection_freq
         while True:
@@ -129,6 +130,7 @@ class Controller:
                         self.cfg["context_size"],
                         self.device,
                     )
+                    # data.append(X)
                     Yhat = self.model.step(X)
 
                     if Yhat:
@@ -146,10 +148,11 @@ class Controller:
                     self.sensor_queue.clear()
                     break
 
-
             elapsed_time = time.time() - start_time
             sleep_time = max(0, 0.01 - elapsed_time) # run at 100Hz
             time.sleep(sleep_time)
+
+        # torch.save(data, "data/handover_high_freq.pt")
 
 
     def _open_gripper(self):
