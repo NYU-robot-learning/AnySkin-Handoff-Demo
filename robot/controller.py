@@ -54,7 +54,8 @@ def get_home_param(
 
 def get_input_tensor_sequence(sensor_queue, diff_rate, context_size, max_diff, device):
     X = np.array(sensor_queue)
-    X = X[diff_rate:] - X[:-diff_rate]
+    X = np.diff(X[::diff_rate], axis=0)
+    # X = X[diff_rate:] - X[:-diff_rate]
     X = torch.as_tensor(X, dtype=torch.float32, device=torch.device(device))
     X = X.unsqueeze(0)[:, -context_size:] / max_diff
     return X
@@ -131,8 +132,8 @@ class Controller:
                         self.cfg["max_diff"],
                         self.device,
                     )
-                    # data.append(X)
                     Yhat = self.model.step(X)
+                    # data.append((X, Yhat))
 
                     if Yhat:
                         logger.info("Slip")
@@ -153,7 +154,7 @@ class Controller:
             sleep_time = max(0, 0.01 - elapsed_time) # run at 100Hz
             time.sleep(sleep_time)
 
-        # torch.save(data, "data/handover_high_freq.pt")
+        # torch.save(data, "data/handover_best_checkpoint.pt")
 
 
     def _open_gripper(self):

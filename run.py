@@ -17,9 +17,10 @@ class WrapperPolicy(nn.Module):
         super().__init__()
         self.model = model
         self.input_size = input_size
+        self.xy_mask = torch.tensor([0, 1, 3, 4, 6, 7, 9, 10, 12, 13])
 
     def step(self, data, *args, **kwargs):
-        model_out = self.model(data[..., :self.input_size])
+        model_out = self.model(data[..., self.xy_mask])
         Yhat = torch.sigmoid(model_out)
         return Yhat > 0.5 # gripper open/close
 
