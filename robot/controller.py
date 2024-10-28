@@ -1,6 +1,7 @@
 from collections import deque
 import logging
 import time
+from pathlib import Path
 
 import torch
 import gradio as gr
@@ -95,6 +96,10 @@ class Controller:
 
         self._max_gripper = 1.0 # TODO: find a suitable value for this
 
+        # Data saving
+        self.demo_num = 0
+        Path("data").mkdir(exist_ok=True)
+
         self.demo = self._init_demo()
 
     def get_gripper_val(self):
@@ -110,6 +115,24 @@ class Controller:
         self.step_n = 0
         self.gripper = 1.0
         self.model.reset()
+
+    def _start_data_collect(self):
+        data = deque(maxlen=self.cfg["data_collection_buffer_size"])
+        while True:
+            start_time = time.time()
+            anyskin_state = self.subscriber.get_sensor_state()
+            data.append(anyskin_state["sensor_values"])
+
+            if len(data) == self.cfg["data_collection_buffer_size"]:
+                seq = torch.as_tensor(np.array(data), dtype=torch.float32)
+                torch.save(seq, f"data/seq_{self.demo_num}.pt")
+                self.demo_num += 1
+                gr.Info(f"Demo {self.demo_num} saved")
+                break
+
+            elapsed_time = time.time() - start_time
+            sleep_time = max(0, 0.01 - elapsed_time) # run at 100Hz
+            time.sleep(sleep_time)
 
     def _run(self):
         logger.info("Run robot handover")
@@ -266,8 +289,8 @@ class Controller:
                         close_button = gr.Button("Close Gripper")
                         close_button.click(fn=self._close_gripper)
 
-                    step_button = gr.Button("Start handover", variant="primary")
-                    step_button.click(fn=self._run)
+                    step_button = gr.Button("Start data collection", variant="primary")
+                    step_button.click(fn=self._start_data_collect)
 
         return demo
 
