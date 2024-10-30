@@ -12,8 +12,9 @@ max_diff: 100.0
 device: cpu
 task: handover
 
-model_weight_pth: "rotate_xy_mask"
-slip_detection_freq: 30 # Hz
+model_pkl: "linear.pkl"
+# model_weight_pth: "rotate_xy_mask"
+slip_detection_freq: 50 # Hz
 slip_detection_threshold: 0.5
 
 robot_params:

@@ -6,6 +6,8 @@ from pathlib import Path
 import torch
 import gradio as gr
 import numpy as np
+from scipy.signal import savgol_filter
+from sklearn.linear_model import LogisticRegression
 
 from zmq_utils import create_request_socket, ZMQKeypointPublisher
 from reskin_server import ReskinSensorSubscriber
@@ -53,13 +55,14 @@ def get_home_param(
         gripper_threshold_post_grasp_list,
     ]
 
-def get_input_tensor_sequence(sensor_queue, diff_rate, context_size, max_diff, device):
-    X = np.array(sensor_queue)
-    X = np.diff(X[::diff_rate], axis=0)
-    # X = X[diff_rate:] - X[:-diff_rate]
-    X = torch.as_tensor(X, dtype=torch.float32, device=torch.device(device))
-    X = X.unsqueeze(0)[:, -context_size:] / max_diff
-    return X
+# def get_input_tensor_sequence(sensor_queue, diff_rate, context_size, max_diff, device):
+#     X = np.array(sensor_queue)
+
+#     # X = np.diff(X[::diff_rate], axis=0)
+#     # # X = X[diff_rate:] - X[:-diff_rate]
+#     # X = torch.as_tensor(X, dtype=torch.float32, device=torch.device(device))
+#     # X = X.unsqueeze(0)[:, -context_size:] / max_diff
+#     return X
 
 class Controller:
     def __init__(self, cfg):
@@ -96,6 +99,11 @@ class Controller:
 
         self._max_gripper = 1.0 # TODO: find a suitable value for this
 
+        # pull detection linear classifier
+        self.baseline = None
+        self.window_len = 10
+        self.classifier = None
+
         # Data saving
         self.demo_num = 0
         Path("data").mkdir(exist_ok=True)
@@ -106,15 +114,14 @@ class Controller:
         return self.gripper
 
     def setup_model(self, model):
-        self.model = model
-        self.model.to(self.device)
-        self.model.eval()
+        self.classifier = model
 
     def reset_experiment(self):
-        self.run_n += 1
-        self.step_n = 0
-        self.gripper = 1.0
-        self.model.reset()
+        pass
+        # self.run_n += 1
+        # self.step_n = 0
+        # self.gripper = 1.0
+        # self.model.reset()
 
     def _start_data_collect(self):
         data = deque(maxlen=self.cfg["data_collection_buffer_size"])
@@ -137,33 +144,48 @@ class Controller:
     def _run(self):
         logger.info("Run robot handover")
         # data = []
+        self._close_gripper()
+
+        sensor_queue = deque(maxlen=self.cfg["tactile_buffer_size"])
+        baseline = None
+        window_len = 10
+        xy_mask = [0, 1, 3, 4, 6, 7, 9, 10, 12, 13]
 
         policy_counter = self.slip_detection_freq
         while True:
             start_time = time.time()
             anyskin_state = self.subscriber.get_sensor_state()
-            self.sensor_queue.append(anyskin_state["sensor_values"])
+            sensor_queue.append(anyskin_state["sensor_values"])
             policy_counter -= 1
 
-            if policy_counter <= 0 and len(self.sensor_queue) == self.cfg["tactile_buffer_size"]:
-                policy_counter = self.slip_detection_freq # reset counter
-                with torch.no_grad():
-                    X = get_input_tensor_sequence(
-                        self.sensor_queue,
-                        self.cfg["diff_rate"],
-                        self.cfg["context_size"],
-                        self.cfg["max_diff"],
-                        self.device,
-                    )
-                    Yhat = self.model.step(X)
-                    # data.append((X, Yhat))
+            if len(sensor_queue) >= 50 and baseline is None:
+                seq = np.array(sensor_queue)
+                seq = savgol_filter(seq, 11, 3, axis=0)
+                baseline = np.median(np.array(sensor_queue)[:50, 15:], axis=0, keepdims=True)
 
-                    if Yhat:
-                        logger.info("Slip")
-                        self.prediction_queue.append(1)
-                    else:
-                        logger.info("No-slip")
-                        self.prediction_queue.append(0)
+            if policy_counter <= 0 and baseline is not None:
+                policy_counter = self.slip_detection_freq # reset counter
+
+                # filter, get the last window and subtract baseline, then normalize
+                seq = np.array(sensor_queue)
+                seq = savgol_filter(seq, 11, 3, axis=0)
+                window = seq[-window_len:, 15:] - baseline
+                window = window[:, xy_mask] / 100
+
+                xy_total_force = np.abs(window.sum())
+                total_diff = window.max() - window.min()
+                total_deviation = window.std(axis=0).sum()
+
+                features = np.asarray([total_diff, xy_total_force, total_deviation]).reshape(1, -1)
+
+                Yhat = self.classifier.predict(features)
+
+                if Yhat:
+                    logger.info("Slip")
+                    self.prediction_queue.append(1)
+                else:
+                    logger.info("No-slip")
+                    self.prediction_queue.append(0)
 
                 if sum(self.prediction_queue) / self.cfg["prediction_buffer_size"] > self.cfg["slip_detection_threshold"]:
                     logger.info("Opening gripper")
@@ -289,8 +311,11 @@ class Controller:
                         close_button = gr.Button("Close Gripper")
                         close_button.click(fn=self._close_gripper)
 
-                    step_button = gr.Button("Start data collection", variant="primary")
-                    step_button.click(fn=self._start_data_collect)
+                    data_collect = gr.Button("Start data collection", variant="primary")
+                    data_collect.click(fn=self._start_data_collect)
+
+                    run_button = gr.Button("Start Handover", variant="primary")
+                    run_button.click(fn=self._run)
 
         return demo
 
