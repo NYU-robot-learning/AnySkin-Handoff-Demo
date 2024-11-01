@@ -1,3 +1,11 @@
+# Assemble gripper
+
+AnySkin goes to left finger, silicone goes to right finger
+
+Magnetometers are placed correctly, fitting the case
+
+Port 7 goes to AnySkin, Port 0 goes to silicone
+
 # Set up
 
 1. Create venv environment:
