@@ -117,7 +117,6 @@ class Controller:
 
     def _run(self):
         logger.info("Run robot handover")
-        # data = []
         self._close_gripper()
 
         sensor_queue = deque(maxlen=self.cfg["tactile_buffer_size"])
@@ -259,11 +258,11 @@ class Controller:
                     )
 
                 with gr.Column(scale=4):
-                    height = gr.Slider(0, 1, value=0.7, step=0.01, label="Height")
+                    height = gr.Slider(0, 1, value=0.8, step=0.01, label="Height")
                     gripper_tight = gr.Slider(
                         -2.0,
                         0.2,
-                        value=-1.6,
+                        value=-2.0,
                         step=0.01,
                         label="Gripper tightness",
                         info="This is how tight the gripper becomes when it closes. The lower the value, the tighter the gripper.",
