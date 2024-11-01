@@ -17,6 +17,7 @@ STRETCH_GRIPPER_MAX = 40
 LOCALHOST = "127.0.0.1"
 ANYCAST = "0.0.0.0"
 
+
 def get_home_param(
     h=0.7,
     y=0.02,
@@ -54,6 +55,7 @@ def get_home_param(
         gripper_threshold_post_grasp_list,
     ]
 
+
 class Controller:
     def __init__(self, cfg):
         self.cfg = cfg
@@ -77,12 +79,8 @@ class Controller:
         self.h = cfg["robot_params"]["h"]
         self.stretch_gripper_tight = cfg["robot_params"]["stretch_gripper_tight"]
 
-        # self.abs_gripper = cfg["robot_params"]["abs_gripper"]
         self.gripper = 1.0
-        # self.rot_unit = cfg["robot_params"]["rot_unit"]
         self.slip_detection_freq = int(100 / cfg["slip_detection_freq"])
-
-        # self._max_gripper = 1.0 # TODO: find a suitable value for this
 
         # pull detection linear classifier
         self.classifier = None
@@ -114,7 +112,7 @@ class Controller:
                 break
 
             elapsed_time = time.time() - start_time
-            sleep_time = max(0, 0.01 - elapsed_time) # run at 100Hz
+            sleep_time = max(0, 0.01 - elapsed_time)  # run at 100Hz
             time.sleep(sleep_time)
 
     def _run(self):
@@ -137,10 +135,12 @@ class Controller:
             if len(sensor_queue) >= 50 and baseline is None:
                 seq = np.array(sensor_queue)
                 seq = savgol_filter(seq, 11, 3, axis=0)
-                baseline = np.median(np.array(sensor_queue)[:50, 15:], axis=0, keepdims=True)
+                baseline = np.median(
+                    np.array(sensor_queue)[:50, 15:], axis=0, keepdims=True
+                )
 
             if policy_counter <= 0 and baseline is not None:
-                policy_counter = self.slip_detection_freq # reset counter
+                policy_counter = self.slip_detection_freq  # reset counter
 
                 # filter, get the last window and subtract baseline, then normalize
                 seq = np.array(sensor_queue)
@@ -152,7 +152,9 @@ class Controller:
                 total_diff = window.max() - window.min()
                 total_deviation = window.std(axis=0).sum()
 
-                features = np.asarray([total_diff, xy_total_force, total_deviation]).reshape(1, -1)
+                features = np.asarray(
+                    [total_diff, xy_total_force, total_deviation]
+                ).reshape(1, -1)
 
                 Yhat = self.classifier.predict(features)
 
@@ -163,7 +165,10 @@ class Controller:
                     logger.info("No-slip")
                     self.prediction_queue.append(0)
 
-                if sum(self.prediction_queue) / self.cfg["prediction_buffer_size"] > self.cfg["slip_detection_threshold"]:
+                if (
+                    sum(self.prediction_queue) / self.cfg["prediction_buffer_size"]
+                    > self.cfg["slip_detection_threshold"]
+                ):
                     logger.info("Opening gripper")
                     self._open_gripper()
                     # clear the prediction queue
@@ -171,14 +176,16 @@ class Controller:
                     break
 
             elapsed_time = time.time() - start_time
-            sleep_time = max(0, 0.01 - elapsed_time) # run at 100Hz
+            sleep_time = max(0, 0.01 - elapsed_time)  # run at 100Hz
             time.sleep(sleep_time)
 
     def _open_gripper(self):
         logger.info("Opening gripper")
         self.gripper = 1.0
         self.flag_socket.send(b"")
-        self.publisher.pub_keypoints([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, self.gripper], "robot_action")
+        self.publisher.pub_keypoints(
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, self.gripper], "robot_action"
+        )
         self.flag_socket.recv()
         time.sleep(0.5)
 
@@ -186,7 +193,9 @@ class Controller:
         logger.info("Close gripper")
         self.gripper = 0.0
         self.flag_socket.send(b"")
-        self.publisher.pub_keypoints([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, self.gripper], "robot_action")
+        self.publisher.pub_keypoints(
+            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, self.gripper], "robot_action"
+        )
         self.flag_socket.recv()
         time.sleep(2.0)
         self.flag_socket.send(b"")
@@ -228,16 +237,15 @@ class Controller:
         )
         self.flag_socket.recv()
 
-
     def _init_demo(self):
         # Convert the above demo to blocks.
         with gr.Blocks(theme="soft", analytics_enabled=False) as demo:
             gr.Markdown(
                 """
             # AnySkin Demo Admin Tool
-            1. Press "Close Gripper" to grasp an object.
-            2. Then, click "Start Handover".
-            3. Done!
+            1. Click "Start Handover" to grasp an object.
+            2. After grasping, wait for the beep in 2 seconds 
+            3. You can now pull the object whenever you want.
             """
             )
             with gr.Row():
