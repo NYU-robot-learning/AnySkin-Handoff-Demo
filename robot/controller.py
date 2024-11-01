@@ -7,7 +7,6 @@ import torch
 import gradio as gr
 import numpy as np
 from scipy.signal import savgol_filter
-from sklearn.linear_model import LogisticRegression
 
 from zmq_utils import create_request_socket, ZMQKeypointPublisher
 from reskin_server import ReskinSensorSubscriber
@@ -55,15 +54,6 @@ def get_home_param(
         gripper_threshold_post_grasp_list,
     ]
 
-# def get_input_tensor_sequence(sensor_queue, diff_rate, context_size, max_diff, device):
-#     X = np.array(sensor_queue)
-
-#     # X = np.diff(X[::diff_rate], axis=0)
-#     # # X = X[diff_rate:] - X[:-diff_rate]
-#     # X = torch.as_tensor(X, dtype=torch.float32, device=torch.device(device))
-#     # X = X.unsqueeze(0)[:, -context_size:] / max_diff
-#     return X
-
 class Controller:
     def __init__(self, cfg):
         self.cfg = cfg
@@ -82,26 +72,19 @@ class Controller:
         self.publisher = publisher
         self.subscriber = subscriber
 
-        self.sensor_queue = deque(maxlen=cfg["tactile_buffer_size"])
         self.prediction_queue = deque(maxlen=cfg["prediction_buffer_size"])
 
-        self.device = cfg["device"]
-
-        self.run_n = -1
-        self.step_n = 0
         self.h = cfg["robot_params"]["h"]
         self.stretch_gripper_tight = cfg["robot_params"]["stretch_gripper_tight"]
 
-        self.abs_gripper = cfg["robot_params"]["abs_gripper"]
+        # self.abs_gripper = cfg["robot_params"]["abs_gripper"]
         self.gripper = 1.0
-        self.rot_unit = cfg["robot_params"]["rot_unit"]
+        # self.rot_unit = cfg["robot_params"]["rot_unit"]
         self.slip_detection_freq = int(100 / cfg["slip_detection_freq"])
 
-        self._max_gripper = 1.0 # TODO: find a suitable value for this
+        # self._max_gripper = 1.0 # TODO: find a suitable value for this
 
         # pull detection linear classifier
-        self.baseline = None
-        self.window_len = 10
         self.classifier = None
 
         # Data saving
@@ -115,13 +98,6 @@ class Controller:
 
     def setup_model(self, model):
         self.classifier = model
-
-    def reset_experiment(self):
-        pass
-        # self.run_n += 1
-        # self.step_n = 0
-        # self.gripper = 1.0
-        # self.model.reset()
 
     def _start_data_collect(self):
         data = deque(maxlen=self.cfg["data_collection_buffer_size"])
@@ -192,15 +168,11 @@ class Controller:
                     self._open_gripper()
                     # clear the prediction queue
                     self.prediction_queue.clear()
-                    self.sensor_queue.clear()
                     break
 
             elapsed_time = time.time() - start_time
             sleep_time = max(0, 0.01 - elapsed_time) # run at 100Hz
             time.sleep(sleep_time)
-
-        # torch.save(data, "data/handover_best_checkpoint.pt")
-
 
     def _open_gripper(self):
         logger.info("Opening gripper")
@@ -216,13 +188,15 @@ class Controller:
         self.flag_socket.send(b"")
         self.publisher.pub_keypoints([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, self.gripper], "robot_action")
         self.flag_socket.recv()
-        time.sleep(0.5)
+        time.sleep(2.0)
+        self.flag_socket.send(b"")
+        self.publisher.pub_keypoints([1.0], "robot_action")
+        self.flag_socket.recv()
 
     def _run_home(self):
         logger.info("Publishing home")
         self.flag_socket.send(b"")
         self.publisher.pub_keypoints([1], "home")
-        self.reset_experiment()
         self.flag_socket.recv()
 
     def update_robot_params(
@@ -230,8 +204,6 @@ class Controller:
         height,
         gripper_tight,
         gripper=1.0,
-        # gripper_close_threshold,
-        # gripper_open_threshold,
     ):
         logger.info(
             f"Publishing params: height={height}, gripper_tight={gripper_tight}"
@@ -327,42 +299,3 @@ class Controller:
 
         print("Launched the Gradio UI at http://ROBOT_IP:7860/")
         self.demo.launch(prevent_thread_lock=False, server_name="0.0.0.0", quiet=True)
-
-        # TODO: maybe an instruction processing loop here
-        # while True:
-        #     # self.flag_socket.send(b"")
-
-        #     # wait for instruction
-        #     instruction = input("Enter instruction: ")
-        #     start_time = time.time()
-
-        #     if instruction.lower() == "q":
-        #         instruction = self._process_instruction(instruction)
-        #         break
-        #     elif instruction.lower() == "rc":
-        #         self._run()
-        #         self.flag_socket.recv()
-        #         instruction = ""
-        #         while len(instruction) == 0:
-        #             instruction = self.run_continous()
-        #         continue
-
-        #     # process and send instruction to robot
-        #     instruction = self._process_instruction(instruction)
-
-        #     # continue loop only once instruction has been executed on robot
-        #     self.flag_socket.recv()
-
-        #     elapsed_time = time.time() - start_time
-        #     sleep_time = max(0, 0.1 - elapsed_time)
-        #     time.sleep(sleep_time)
-
-
-
-
-
-
-
-
-
-

@@ -25,7 +25,7 @@ TASK_GDRIVE_ID = {
 #         pass
 
 def init_model(cfg: OmegaConf):
-    with open(f"checkpoints/handover/{cfg.model_pkl}") as f:
+    with open(f"checkpoints/handover/{cfg.model_pkl}", "rb") as f:
         model = pickle.load(f)
 
     return model
