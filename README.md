@@ -57,7 +57,7 @@ python3 run.py
 
 3. Forward port 7860, and go to `localhost:7860`. You will see the demo UI:
 
-![[ui.png]]
+![](./ui.png)
 
 If you want to change the gripper tightness or the height of the arm, play with the sliders, then click "Update Params" and "Home the robot" in this order.
 
