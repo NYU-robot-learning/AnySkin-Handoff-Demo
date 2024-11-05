@@ -8,16 +8,16 @@ Port 7 goes to AnySkin, Port 0 goes to silicone
 
 # Set up
 
-1. Create venv environment:
+1. Create a conda environment:
 
 ```bash
-python3 -m venv .venv
+conda create -n 'anyskin' python=3.10 
 ```
 
 2. Install requirements:
 
 ```bash
-source ./venv/bin/activate
+conda activate anyskin
 python3 -m pip install -r requirements.txt
 ```
 
@@ -42,15 +42,15 @@ It might say "another process is using Robot" etc., follow it and complete the h
 
 2. Make sure venv is not activated. Create different terminal panes in Tmux, run:
 	
-- robot server without activating venv:
+- robot server without activating conda:
 ```bash
 cd robot_server
 python3 start_server.py
 ```
 Robot should move to the home position.
-- Activate venv and reskin server:
+- Activate conda and reskin server:
 ```bash
-source .venv/bin/activate
+conda activate anyskin
 python3 reskin_server.py
 ```
 if didn't start streaming, try a different port (it's either ACM5 which is the default or ACM6):
@@ -59,7 +59,7 @@ python3 reskin_server.py reskin_config.port="/dev/ttyACM6"
 ```
 - Start the UI:
 ```bash
-source .venv/bin/activate
+conda activate anyskin
 python3 run.py
 ```
 
